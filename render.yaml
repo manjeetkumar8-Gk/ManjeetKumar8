@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: syncora-stock-api
+    env: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres:szabist100campus@db.vohlumkaifarrspibkrk.supabase.co:5432/postgres
+      - key: DB_SSL
+        value: "true"
+      - key: JWT_SECRET
+        value: stock_management_system_secret_2026_change_later
+      - key: B2_KEY_ID
+        value: "005c515696397030000000001"
+      - key: B2_APPLICATION_KEY
+        value: K005qMg6lksQih/leSxNR1lTzV5Wz5A
+      - key: B2_BUCKET_ID
+        value: cc8591d516c956e3a9170013
+      - key: B2_BUCKET_NAME
+        value: syncora

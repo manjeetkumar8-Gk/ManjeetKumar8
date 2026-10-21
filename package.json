@@ -1,0 +1,70 @@
+{
+  "devDependencies": {
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.5"
+  },
+  "name": "syncora-stock-management",
+  "version": "1.0.0",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "start:desktop": "electron .",
+    "installer": "npm run build && electron-builder --win nsis",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build"
+  },
+  "build": {
+    "appId": "com.syncoratechnologies.stockmanagement",
+    "productName": "Syncora Stock Management",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "frontend/dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/dist",
+        "to": "backend/dist"
+      },
+      {
+        "from": "backend/node_modules",
+        "to": "backend/node_modules"
+      },
+      {
+        "from": "backend/package.json",
+        "to": "backend/package.json"
+      },
+      {
+        "from": "desktop/runtime/node.exe",
+        "to": "runtime/node.exe"
+      },
+      {
+        "from": "database/schema.sql",
+        "to": "database/schema.sql"
+      },
+      {
+        "from": "backend/.env",
+        "to": "backend/.env"
+      }
+    ],
+    "asarUnpack": [
+      "backend/node_modules/**/*.node"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "desktop/assets/syncora.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Syncora Stock Management"
+    }
+  }
+}
+

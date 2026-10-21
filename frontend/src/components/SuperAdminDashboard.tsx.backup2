@@ -1,0 +1,660 @@
+
+import { useCallback, useEffect, useState } from "react";
+
+const API = "http://localhost:5000/api";
+
+type Stats = {
+  totalShops: number;
+  activeShops: number;
+  inactiveShops: number;
+  totalUsers: number;
+};
+
+type Shop = {
+  id: number;
+  shop_name: string;
+  shop_code: string;
+  email?: string;
+  phone?: string;
+  status: string;
+  subscription_end?: string;
+  owner_name?: string;
+  owner_email?: string;
+};
+
+type Props = {
+  token: string;
+  onLogout: () => void;
+  darkMode: boolean;
+  onToggleTheme: () => void;
+};
+
+const emptyStats: Stats = {
+  totalShops: 0,
+  activeShops: 0,
+  inactiveShops: 0,
+  totalUsers: 0,
+};
+
+function SyncoraLogo({ size = 24 }: { size?: number }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div
+        className="flex shrink-0 items-center justify-center rounded-xl bg-teal-500 shadow-sm shadow-teal-950/20"
+        style={{ width: size + 12, height: size + 12 }}
+      >
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M14.5 3.5L20.5 9.5L16.5 13.5L14 11L16.5 8.5L14.5 6.5L9.5 11.5L6.5 8.5L11.5 3.5H14.5Z"
+            fill="#ffffff"
+          />
+          <path
+            d="M9.5 20.5L3.5 14.5L7.5 10.5L10 13L7.5 15.5L9.5 17.5L14.5 12.5L17.5 15.5L12.5 20.5H9.5Z"
+            fill="#ffffff"
+          />
+        </svg>
+      </div>
+
+      <span className="whitespace-nowrap text-xl font-bold tracking-tight text-white">
+        Syncora<span className="text-teal-400">.</span>
+      </span>
+    </div>
+  );
+}
+
+export default function SuperAdminDashboard({
+  token,
+  onLogout,
+  darkMode,
+  onToggleTheme,
+}: Props) {
+  const [stats, setStats] = useState<Stats>(emptyStats);
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activePage, setActivePage] = useState("Dashboard");
+  const [search, setSearch] = useState("");
+
+  const dark = darkMode;
+
+  const pageBg = dark
+    ? "bg-[#171b21] text-[#e5e9ef]"
+    : "bg-[#f4f6f8] text-[#273444]";
+
+  const panel = dark
+    ? "border-[#343c47] bg-[#222831]"
+    : "border-[#e1e6eb] bg-white";
+
+  const mainText = dark ? "text-[#f0f3f7]" : "text-[#263445]";
+  const mutedText = dark ? "text-[#c0c9d4]" : "text-[#687789]";
+  const borderColor = dark ? "border-[#3a424e]" : "border-[#e1e6eb]";
+
+  const inputStyle = dark
+    ? "border-[#424b58] bg-[#191e25] text-[#f0f3f7] placeholder:text-[#a7b1bf] focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
+    : "border-[#d5dde5] bg-white text-[#263445] placeholder:text-[#8995a3] focus:border-teal-600 focus:ring-2 focus:ring-teal-600/10";
+
+
+  const loadDashboard = useCallback(async () => {
+    if (!token) {
+      setError("Login token is missing. Please sign in again.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
+
+      const [statsResponse, shopsResponse] = await Promise.all([
+        fetch(`${API}/super-admin/dashboard`, { headers }),
+        fetch(`${API}/super-admin/shops`, { headers }),
+      ]);
+
+      const statsData = await statsResponse.json();
+      const shopsData = await shopsResponse.json();
+
+      if (!statsResponse.ok) {
+        throw new Error(
+          statsData.message || "Unable to load dashboard statistics."
+        );
+      }
+
+      if (!shopsResponse.ok) {
+        throw new Error(
+          shopsData.message || "Unable to load registered shops."
+        );
+      }
+
+      const rawStats = statsData.stats ?? statsData.data ?? statsData;
+
+      const rawShops = Array.isArray(shopsData)
+        ? shopsData
+        : shopsData.shops ?? shopsData.data ?? [];
+
+      setStats({
+        totalShops: Number(
+          rawStats.totalShops ?? rawStats.total_shops ?? 0
+        ),
+        activeShops: Number(
+          rawStats.activeShops ?? rawStats.active_shops ?? 0
+        ),
+        inactiveShops: Number(
+          rawStats.inactiveShops ??
+            rawStats.inactive_shops ??
+            Math.max(
+              0,
+              Number(rawStats.totalShops ?? rawStats.total_shops ?? 0) -
+                Number(rawStats.activeShops ?? rawStats.active_shops ?? 0)
+            )
+        ),
+        totalUsers: Number(
+          rawStats.totalUsers ?? rawStats.total_users ?? 0
+        ),
+      });
+
+      setShops(Array.isArray(rawShops) ? rawShops : []);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to connect to the backend."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  const filteredShops = shops.filter((shop) => {
+    const query = search.trim().toLowerCase();
+
+    return (
+      shop.shop_name?.toLowerCase().includes(query) ||
+      shop.shop_code?.toLowerCase().includes(query) ||
+      shop.owner_email?.toLowerCase().includes(query) ||
+      shop.email?.toLowerCase().includes(query)
+    );
+  });
+
+  const menu = [
+    { name: "Dashboard", icon: "⌂" },
+    { name: "Shops", icon: "▦" },
+    { name: "Subscriptions", icon: "◷" },
+    { name: "Users", icon: "♙" },
+    { name: "Settings", icon: "⚙" },
+  ];
+
+  return (
+    <div className={`min-h-screen w-full transition-colors duration-200 md:flex ${pageBg}`}>
+      {/* Sidebar: same navy theme as App.tsx */}
+      <aside className="flex w-full shrink-0 flex-col border-r border-[#354653] bg-[#203441] p-4 text-[#e9f0f4] md:min-h-screen md:w-[264px] md:p-5">
+        <div className="mb-7 flex min-h-[58px] items-center border-b border-white/10 pb-5">
+          <SyncoraLogo size={24} />
+        </div>
+
+        <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.045] p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">
+            Administration
+          </p>
+
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-500/15 text-lg font-bold text-teal-200">
+              S
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Super Admin
+              </p>
+              <p className="mt-0.5 text-xs text-slate-300">
+                Platform management
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-300">
+          Main Menu
+        </p>
+
+        <nav className="flex gap-2 overflow-x-auto md:flex-col">
+          {menu.map((item) => {
+            const active = activePage === item.name;
+
+            return (
+              <button
+                key={item.name}
+                type="button"
+                onClick={() => setActivePage(item.name)}
+                aria-current={active ? "page" : undefined}
+                className={`relative flex shrink-0 items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition ${
+                  active
+                    ? "bg-[#31545d] font-semibold text-white shadow-sm"
+                    : "text-[#d5dfe5] hover:bg-white/[0.075] hover:text-white"
+                }`}
+              >
+                {active && (
+                  <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r-full bg-[#5bd0b6]" />
+                )}
+
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-base ${
+                    active
+                      ? "bg-teal-400/15 text-[#a0f0dd]"
+                      : "text-slate-200"
+                  }`}
+                >
+                  {item.icon}
+                </span>
+
+                <span>{item.name}</span>
+                {active && (
+                  <span className="ml-auto text-xs text-[#a0f0dd]">●</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="mt-6 space-y-2 border-t border-white/10 pt-4">
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className="w-full rounded-lg border border-white/15 bg-white/[0.06] px-3 py-3 text-left text-sm font-semibold text-white transition hover:bg-white/[0.12]"
+          >
+            <span className="mr-2">{dark ? "☀" : "☾"}</span>
+            {dark ? "Light mode" : "Dark mode"}
+          </button>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-full rounded-lg border border-red-300/20 bg-red-400/[0.07] px-3 py-3 text-left text-sm font-semibold text-red-100 transition hover:bg-red-400/[0.15]"
+          >
+            ↪ Sign out
+          </button>
+        </div>
+
+        <div className="mt-6 hidden rounded-lg border border-white/10 bg-white/[0.045] p-3 md:block">
+          <p className="text-xs font-semibold text-slate-100">
+            Syncora Workspace
+          </p>
+          <p className="mt-1 text-[10px] text-slate-300">
+            Stock Management System
+          </p>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+        <header
+          className={`mb-7 flex flex-wrap items-center justify-between gap-4 rounded-xl border p-5 shadow-sm sm:p-6 ${panel}`}
+        >
+          <div>
+            <div className={`flex flex-wrap items-center gap-2 text-xs ${mutedText}`}>
+              <span>Syncora Technologies</span>
+              <span>/</span>
+              <span className={dark ? "text-teal-300" : "text-teal-700"}>
+                Administration
+              </span>
+            </div>
+
+            <h1 className={`mt-2 text-2xl font-bold tracking-tight sm:text-3xl ${mainText}`}>
+              {activePage}
+            </h1>
+
+            <p className={`mt-2 text-sm leading-6 ${mutedText}`}>
+              Manage your platform from one organized workspace.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void loadDashboard()}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#176b68] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#125a57] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span>{loading ? "◌" : "↻"}</span>
+            {loading ? "Refreshing..." : "Refresh data"}
+          </button>
+        </header>
+
+        {error && (
+          <div
+            role="alert"
+            className={`mb-6 rounded-xl border p-4 text-sm ${
+              dark
+                ? "border-red-800 bg-red-950/40 text-red-200"
+                : "border-red-300 bg-red-50 text-red-800"
+            }`}
+          >
+            <p className="font-semibold">Could not load data</p>
+            <p className="mt-1">{error}</p>
+
+            <button
+              type="button"
+              onClick={() => void loadDashboard()}
+              className="mt-3 rounded-lg bg-red-600 px-3 py-2 font-semibold text-white transition hover:bg-red-500"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {activePage === "Dashboard" && (
+          <>
+            <section className="mb-7 rounded-2xl bg-[#25444f] px-5 py-6 text-white shadow-sm sm:px-7 sm:py-8">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-3 py-1.5 text-xs font-medium text-teal-100">
+                <span className="h-2 w-2 rounded-full bg-teal-300" />
+                Inventory workspace
+              </div>
+
+              <h2 className="mt-4 text-2xl font-bold leading-tight sm:text-3xl">
+                Welcome to Syncora Administration.
+              </h2>
+
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-100">
+                Monitor registered shops, review platform activity, and manage
+                your business accounts from one central workspace.
+              </p>
+            </section>
+
+            <div className="mb-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  label: "Total Shops",
+                  value: stats.totalShops,
+                  icon: "▦",
+                  tone: dark
+                    ? "bg-teal-900/40 text-teal-200"
+                    : "bg-[#e5f3ef] text-[#286d5d]",
+                },
+                {
+                  label: "Active Shops",
+                  value: stats.activeShops,
+                  icon: "✓",
+                  tone: dark
+                    ? "bg-emerald-950/50 text-emerald-300"
+                    : "bg-emerald-50 text-emerald-800",
+                },
+                {
+                  label: "Inactive Shops",
+                  value: stats.inactiveShops,
+                  icon: "◷",
+                  tone: dark
+                    ? "bg-amber-950/50 text-amber-300"
+                    : "bg-[#f6eddf] text-[#8c6125]",
+                },
+                {
+                  label: "Total Users",
+                  value: stats.totalUsers,
+                  icon: "♙",
+                  tone: dark
+                    ? "bg-blue-950/50 text-blue-300"
+                    : "bg-[#e7effb] text-[#315d96]",
+                },
+              ].map((card) => (
+                <div
+                  key={card.label}
+                  className={`rounded-xl border p-5 shadow-sm transition hover:shadow-md ${panel}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className={`text-sm font-semibold ${mutedText}`}>
+                      {card.label}
+                    </p>
+                    <span className={`flex h-11 w-11 items-center justify-center rounded-xl text-xl ${card.tone}`}>
+                      {card.icon}
+                    </span>
+                  </div>
+
+                  <p className={`mt-5 text-3xl font-bold ${mainText}`}>
+                    {loading ? "—" : card.value}
+                  </p>
+
+                  <p className={`mt-2 text-xs ${mutedText}`}>
+                    Platform overview
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <section className={`rounded-xl border p-5 shadow-sm sm:p-6 ${panel}`}>
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className={`text-lg font-bold ${mainText}`}>
+                    Recent Shops
+                  </h2>
+                  <p className={`mt-1 text-sm ${mutedText}`}>
+                    Shops registered on your platform
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActivePage("Shops")}
+                  className="rounded-lg bg-[#176b68] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#125a57]"
+                >
+                  Manage Shops →
+                </button>
+              </div>
+
+              {loading ? (
+                <p className={`py-8 text-center text-sm ${mutedText}`}>
+                  Loading dashboard...
+                </p>
+              ) : shops.length === 0 ? (
+                <p className={`py-8 text-center text-sm ${mutedText}`}>
+                  No shop records found.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px] text-left text-sm">
+                    <thead>
+                      <tr className={`border-b ${borderColor}`}>
+                        <th className={`px-3 py-3 font-semibold ${dark ? "text-teal-300" : "text-teal-800"}`}>
+                          Shop
+                        </th>
+                        <th className={`px-3 py-3 font-semibold ${dark ? "text-teal-300" : "text-teal-800"}`}>
+                          Code
+                        </th>
+                        <th className={`px-3 py-3 font-semibold ${dark ? "text-teal-300" : "text-teal-800"}`}>
+                          Owner
+                        </th>
+                        <th className={`px-3 py-3 font-semibold ${dark ? "text-teal-300" : "text-teal-800"}`}>
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {shops.slice(0, 5).map((shop) => (
+                        <tr
+                          key={shop.id}
+                          className={`border-b last:border-0 ${
+                            dark
+                              ? "border-[#1f4e55] hover:bg-[#173d45]"
+                              : "border-[#e1e6eb] hover:bg-[#f8fafb]"
+                          }`}
+                        >
+                          <td className={`px-3 py-4 font-semibold ${mainText}`}>
+                            {shop.shop_name}
+                          </td>
+                          <td className={`px-3 py-4 ${mutedText}`}>
+                            {shop.shop_code}
+                          </td>
+                          <td className={`px-3 py-4 ${mutedText}`}>
+                            {shop.owner_name || shop.owner_email || "—"}
+                          </td>
+                          <td className="px-3 py-4">
+                            <StatusBadge status={shop.status} dark={dark} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
+        {activePage === "Shops" && (
+          <section className={`rounded-xl border p-5 shadow-sm sm:p-6 ${panel}`}>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className={`text-lg font-bold ${mainText}`}>
+                  Shop Management
+                </h2>
+                <p className={`mt-1 text-sm ${mutedText}`}>
+                  Registered shops and their activation status.
+                </p>
+              </div>
+
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search shops..."
+                aria-label="Search shops"
+                className={`w-full rounded-lg border px-4 py-3 text-sm outline-none transition sm:w-64 ${inputStyle}`}
+              />
+            </div>
+
+            {loading ? (
+              <p className={`py-8 text-center ${mutedText}`}>
+                Loading shops...
+              </p>
+            ) : filteredShops.length === 0 ? (
+              <p className={`py-8 text-center ${mutedText}`}>
+                No matching shops found.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px] text-left text-sm">
+                  <thead>
+                    <tr className={`border-b ${borderColor}`}>
+                      <th className={`px-3 py-3 font-semibold ${dark ? "text-teal-300" : "text-teal-800"}`}>
+                        Shop Name
+                      </th>
+                      <th className={`px-3 py-3 font-semibold ${dark ? "text-teal-300" : "text-teal-800"}`}>
+                        Shop Code
+                      </th>
+                      <th className={`px-3 py-3 font-semibold ${dark ? "text-teal-300" : "text-teal-800"}`}>
+                        Email
+                      </th>
+                      <th className={`px-3 py-3 font-semibold ${dark ? "text-teal-300" : "text-teal-800"}`}>
+                        Phone
+                      </th>
+                      <th className={`px-3 py-3 font-semibold ${dark ? "text-teal-300" : "text-teal-800"}`}>
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {filteredShops.map((shop) => (
+                      <tr
+                        key={shop.id}
+                        className={`border-b last:border-0 ${
+                          dark
+                            ? "border-[#1f4e55] hover:bg-[#173d45]"
+                            : "border-[#e1e6eb] hover:bg-[#f8fafb]"
+                        }`}
+                      >
+                        <td className={`px-3 py-4 font-semibold ${mainText}`}>
+                          {shop.shop_name}
+                        </td>
+                        <td className={`px-3 py-4 ${mutedText}`}>
+                          {shop.shop_code}
+                        </td>
+                        <td className={`px-3 py-4 ${mutedText}`}>
+                          {shop.owner_email || shop.email || "—"}
+                        </td>
+                        <td className={`px-3 py-4 ${mutedText}`}>
+                          {shop.phone || "—"}
+                        </td>
+                        <td className="px-3 py-4">
+                          <StatusBadge status={shop.status} dark={dark} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activePage !== "Dashboard" && activePage !== "Shops" && (
+          <section className={`rounded-xl border p-6 shadow-sm sm:p-8 ${panel}`}>
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500/10 text-2xl text-teal-600 dark:text-teal-300">
+              {menu.find((item) => item.name === activePage)?.icon ?? "▦"}
+            </div>
+
+            <h2 className={`text-xl font-bold ${mainText}`}>
+              {activePage}
+            </h2>
+
+            <p className={`mt-3 text-sm leading-6 ${mutedText}`}>
+              This module is not connected yet.
+            </p>
+          </section>
+        )}
+
+        <footer className={`mt-8 border-t pt-4 ${borderColor}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className={`text-xs ${mutedText}`}>
+              Syncora Stock Management System
+            </p>
+            <p className={`text-xs ${mutedText}`}>
+              © {new Date().getFullYear()} Syncora Technologies
+            </p>
+          </div>
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+function StatusBadge({
+  status,
+  dark,
+}: {
+  status: string;
+  dark: boolean;
+}) {
+  const normalized = (status || "unknown").toLowerCase();
+
+  const styles =
+    normalized === "active"
+      ? dark
+        ? "border-emerald-700 bg-emerald-950/60 text-emerald-300"
+        : "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : normalized === "pending"
+        ? dark
+          ? "border-amber-700 bg-amber-950/60 text-amber-300"
+          : "border-amber-200 bg-amber-50 text-amber-800"
+        : dark
+          ? "border-[#424b58] bg-[#2a313b] text-[#c0c9d4]"
+          : "border-[#dbe2e8] bg-[#f1f5f7] text-[#687789]";
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${styles}`}
+    >
+      {status || "Unknown"}
+    </span>
+  );
+}

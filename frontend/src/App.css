@@ -1,0 +1,286 @@
+
+/* ==========================================
+   SYNCORA STOCK MANAGEMENT SYSTEM
+   GLOBAL DARK TEAL THEME
+   Colors only — preserve layout
+========================================== */
+
+html.dark {
+  color-scheme: dark;
+
+  --app-bg: #0b171a;
+  --app-card-bg: #0f282a;
+  --app-card-border: #1d484c;
+  --app-text: #ffffff;
+  --app-muted: #c2d5d6;
+  --app-input-bg: #0a1d1f;
+  --app-input-border: #23555a;
+  --app-accent: #5eead4;
+}
+
+/* Page background */
+html.dark body,
+html.dark #root,
+html.dark .sm-page,
+html.dark main {
+  background-color: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}
+
+/* All common cards and panels */
+html.dark .sm-panel,
+html.dark .sm-card,
+html.dark .sm-stat-card,
+html.dark div[class*="panel"],
+html.dark div[class*="card"],
+html.dark form,
+html.dark [class*="bg-white"],
+html.dark [class*="bg-gray-50"],
+html.dark [class*="bg-slate-50"],
+html.dark [class*="bg-blue-50"],
+html.dark [class*="bg-teal-50"],
+html.dark .stock-product-details,
+html.dark .stock-in-summary {
+  background-color: var(--app-card-bg) !important;
+  border-color: var(--app-card-border) !important;
+  color: var(--app-text) !important;
+}
+
+/* Bordered containers */
+html.dark .rounded-xl.border,
+html.dark .rounded-lg.border,
+html.dark .rounded-2xl.border,
+html.dark .rounded-md.border {
+  background-color: var(--app-card-bg) !important;
+  border-color: var(--app-card-border) !important;
+  color: var(--app-text) !important;
+}
+
+/* Headings and primary text */
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6,
+html.dark label,
+html.dark th,
+html.dark td,
+html.dark li,
+html.dark .sm-page-title,
+html.dark .sm-panel-title,
+html.dark .sm-stat-value,
+html.dark .sm-cell-primary,
+html.dark .stock-product-details strong,
+html.dark .stock-in-summary strong {
+  color: #ffffff !important;
+}
+
+/* Text inside containers */
+html.dark .sm-panel p,
+html.dark .sm-card p,
+html.dark .sm-stat-card p,
+html.dark .stock-product-details p,
+html.dark .stock-in-summary p {
+  color: var(--app-muted) !important;
+}
+
+/* Secondary text */
+html.dark .sm-page-description,
+html.dark .sm-stat-label,
+html.dark .sm-stat-caption,
+html.dark .sm-panel-description,
+html.dark .sm-panel-footer,
+html.dark .sm-state,
+html.dark small {
+  color: var(--app-muted) !important;
+}
+
+/* Teal accent */
+html.dark .sm-eyebrow {
+  color: var(--app-accent) !important;
+}
+
+/* Panel dividers */
+html.dark .sm-panel-header,
+html.dark .sm-form-actions,
+html.dark .sm-panel-footer,
+html.dark .sm-field {
+  border-color: var(--app-card-border) !important;
+}
+
+/* Inputs, dropdowns and text areas */
+html.dark .sm-input,
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: var(--app-input-bg) !important;
+  border-color: var(--app-input-border) !important;
+  color: #ffffff !important;
+}
+
+/* Input placeholders */
+html.dark .sm-input::placeholder,
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #b8cbcd !important;
+  opacity: 1;
+}
+
+/* Dropdown options */
+html.dark select option {
+  background-color: var(--app-card-bg) !important;
+  color: #ffffff !important;
+}
+
+/* Focus states */
+html.dark .sm-input:focus,
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: var(--app-accent) !important;
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.15) !important;
+}
+
+/* Date picker icon */
+html.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+/* Primary buttons */
+html.dark .sm-btn-primary {
+  background-color: #0f766e !important;
+  border-color: #0f766e !important;
+  color: #ffffff !important;
+}
+
+html.dark .sm-btn-primary:hover:not(:disabled) {
+  background-color: #115e59 !important;
+  border-color: #115e59 !important;
+}
+
+/* Secondary buttons */
+html.dark .sm-btn-secondary {
+  background-color: #173d3f !important;
+  border-color: var(--app-card-border) !important;
+  color: #ffffff !important;
+}
+
+html.dark .sm-btn-secondary:hover:not(:disabled) {
+  background-color: #1d484c !important;
+}
+
+/* Tables */
+html.dark table,
+html.dark .sm-table {
+  background-color: transparent !important;
+}
+
+html.dark table thead,
+html.dark .sm-table thead {
+  background-color: #0b2224 !important;
+}
+
+html.dark table th,
+html.dark .sm-table th {
+  color: var(--app-accent) !important;
+  border-color: var(--app-card-border) !important;
+  font-weight: 600 !important;
+}
+
+html.dark table td,
+html.dark .sm-table td {
+  color: #ffffff !important;
+  border-color: var(--app-card-border) !important;
+}
+
+html.dark table tbody tr:hover,
+html.dark .sm-table tbody tr:hover {
+  background-color: #163638 !important;
+}
+
+/* Status badges */
+html.dark .sm-status-active {
+  background-color: #064e3b !important;
+  color: #6ee7b7 !important;
+}
+
+html.dark .sm-status-inactive {
+  background-color: #7f1d1d !important;
+  color: #fca5a5 !important;
+}
+
+/* Action buttons */
+html.dark .sm-action-btn {
+  color: var(--app-accent) !important;
+}
+
+html.dark .sm-action-danger {
+  color: #f87171 !important;
+}
+
+/* Success notifications */
+html.dark [data-sonner-toast][data-type="success"],
+html.dark .Toastify__toast--success,
+html.dark .toast-success,
+html.dark .alert-success,
+html.dark .notification-success {
+  background-color: #123b35 !important;
+  border-color: #218b78 !important;
+  color: #d1fae5 !important;
+}
+
+/* Error notifications */
+html.dark [data-sonner-toast][data-type="error"],
+html.dark .Toastify__toast--error,
+html.dark .toast-error,
+html.dark .alert-error,
+html.dark .alert-danger,
+html.dark .notification-error {
+  background-color: #3b2025 !important;
+  border-color: #a94452 !important;
+  color: #fecaca !important;
+}
+
+/* Modal surfaces */
+html.dark [role="dialog"],
+html.dark [aria-modal="true"] {
+  background-color: var(--app-card-bg);
+  border-color: var(--app-card-border);
+  color: var(--app-text);
+}
+
+/* Cursor behavior */
+body,
+#root,
+#root * {
+  cursor: default;
+}
+
+/* Typing fields */
+input,
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+}
+
+/* Clickable controls */
+button,
+a,
+select,
+[role="button"] {
+  cursor: pointer;
+}
+
+/* Hide caret outside typing fields */
+#root * {
+  caret-color: transparent;
+}
+
+#root input,
+#root textarea,
+#root [contenteditable="true"] {
+  caret-color: auto;
+  cursor: text;
+}

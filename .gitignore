@@ -48,3 +48,13 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Large distribution files
+release/
+*.exe
+*.apk
+*.zip
+desktop/runtime/
+frontend/android/app/build/
+frontend/android/.gradle/
+frontend/android/local.properties
