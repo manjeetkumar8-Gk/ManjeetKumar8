@@ -1,7 +1,13 @@
 import { Pool, PoolConfig } from "pg";
 import dotenv from "dotenv";
+import path from "path";
 
+// Load .env from multiple potential runtime paths
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+dotenv.config({ path: path.resolve(process.cwd(), "backend/.env") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const isRemoteHost =
   process.env.DB_HOST &&
