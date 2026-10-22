@@ -68,15 +68,27 @@ app.get("/api/health", async (_req, res) => {
   }
 });
 
+// System diagnostic check
+app.get("/api/system-info", (_req, res) => {
+  res.json({
+    cwd: process.cwd(),
+    dirname: __dirname,
+    frontendDist: frontendDist || "NOT_FOUND",
+    isVercel: Boolean(process.env.VERCEL),
+    hasDbUrl: Boolean(process.env.DATABASE_URL),
+  });
+});
+
 // Serve frontend static build if present
 const candidatePaths = [
-  path.resolve(__dirname, "../../frontend/dist"),
-  path.resolve(__dirname, "../frontend/dist"),
-  path.resolve(process.cwd(), "frontend/dist"),
-  path.resolve(__dirname, "../public"),
-  path.resolve(__dirname, "../../backend/public"),
   path.resolve(process.cwd(), "backend/public"),
   path.resolve(process.cwd(), "public"),
+  path.resolve(__dirname, "../public"),
+  path.resolve(__dirname, "../../public"),
+  path.resolve(__dirname, "public"),
+  path.resolve(process.cwd(), "frontend/dist"),
+  path.resolve(__dirname, "../frontend/dist"),
+  path.resolve(__dirname, "../../frontend/dist"),
 ];
 const frontendDist = candidatePaths.find((dir) => fs.existsSync(dir));
 

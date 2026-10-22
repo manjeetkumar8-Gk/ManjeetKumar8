@@ -5,53 +5,14 @@
       "src": "backend/src/server.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["backend/public/**"]
-      }
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
+        "includeFiles": ["backend/public/**", "public/**"]
       }
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "backend/src/server.ts"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "frontend/assets/$1"
-    },
-    {
-      "src": "/sw.js",
-      "dest": "frontend/sw.js"
-    },
-    {
-      "src": "/manifest.json",
-      "dest": "frontend/manifest.json"
-    },
-    {
-      "src": "/icon-(.*)",
-      "dest": "frontend/icon-$1"
-    },
-    {
-      "src": "/apple-touch-icon.png",
-      "dest": "frontend/apple-touch-icon.png"
-    },
-    {
-      "src": "/favicon.svg",
-      "dest": "frontend/favicon.svg"
-    },
-    {
-      "src": "/icons.svg",
-      "dest": "frontend/icons.svg"
-    },
-    {
       "src": "/(.*)",
-      "dest": "frontend/index.html"
+      "dest": "backend/src/server.ts"
     }
   ]
 }
