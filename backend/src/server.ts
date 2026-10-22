@@ -1,8 +1,9 @@
-
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
+import path from "path";
+import fs from "fs";
 import ownerActivationRoutes from "./routes/ownerActivationRoutes";
 import { pool } from "./config/db";
 
@@ -24,11 +25,14 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
 app.use(cors());
 app.use(express.json());
-app.use("/api/auth", ownerActivationRoutes);
+
 // API routes
+app.use("/api/auth", ownerActivationRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/auth", passwordResetRoutes);
 
@@ -43,14 +47,6 @@ app.use("/api/users", userRoutes);
 // Super Admin routes
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/backup", backupRoutes);
-
-// Home
-app.get("/", (_req, res) => {
-  res.json({
-    success: true,
-    message: "Stock Management System API is running",
-  });
-});
 
 // Health check
 app.get("/api/health", async (_req, res) => {
@@ -71,6 +67,30 @@ app.get("/api/health", async (_req, res) => {
     });
   }
 });
+
+// Serve frontend static build if present
+const candidatePaths = [
+  path.resolve(__dirname, "../../frontend/dist"),
+  path.resolve(__dirname, "../frontend/dist"),
+  path.resolve(process.cwd(), "frontend/dist"),
+];
+const frontendDist = candidatePaths.find((dir) => fs.existsSync(dir));
+
+if (frontendDist) {
+  app.use(express.static(frontendDist));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+} else {
+  // Fallback API root
+  app.get("/", (_req, res) => {
+    res.json({
+      success: true,
+      message: "Stock Management System API is running",
+    });
+  });
+}
 
 // Start server
 if (!process.env.VERCEL) {

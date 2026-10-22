@@ -1,3 +1,4 @@
+import { smartApiRequest } from "../offline/offlineApi";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import { API } from "../config/api";
@@ -52,31 +53,8 @@ type ApiResult = {
   success?: boolean;
 };
 
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = localStorage.getItem("token");
-
-  const response = await fetch(`${API}${endpoint}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
-
-  const result: unknown = await response.json().catch(() => ({}));
-  const data = result as ApiResult;
-
-  if (!response.ok || data.success === false) {
-    throw new Error(
-      data.message || data.error || `Request failed (${response.status})`
-    );
-  }
-
-  return result as T;
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  return smartApiRequest<T>(endpoint, options);
 }
 
 function getRows<T>(result: unknown, key: string): T[] {

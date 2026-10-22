@@ -12,6 +12,10 @@ import Warehouses from "./components/Warehouses";
 import Vehicles from "./components/Vehicles";
 import SuperAdminDashboard from "./components/SuperAdminDashboard";
 import SyncoraLogo from "./components/SyncoraLogo";
+import SyncStatusBadge from "./components/SyncStatusBadge";
+import { initSyncEngine, triggerAutoSync } from "./offline/syncEngine";
+import { seedOfflineDbIfEmpty } from "./offline/seedDb";
+import { offlineDb } from "./offline/db";
 
 type Page =
   | "dashboard"
@@ -146,6 +150,14 @@ function saveSession(token: string, user: UserInfo): boolean {
 }
 
 function App() {
+  useEffect(() => {
+    seedOfflineDbIfEmpty();
+    initSyncEngine();
+    const savedToken = localStorage.getItem("token");
+    if (savedToken) {
+      triggerAutoSync(savedToken).catch(() => {});
+    }
+  }, []);
   const [page, setPage] = useState<Page>("dashboard");
   const [showForgot, setShowForgot] = useState(false);
 
@@ -294,6 +306,18 @@ function App() {
         !Array.isArray(data.user)
           ? data.user
           : {};
+
+      // Cache user into local offline database
+      offlineDb.users.put({
+        id: savedUser.id || 1,
+        shop_id: savedUser.shop_id || 1,
+        username: cleanUsername,
+        name: savedUser.name || cleanUsername,
+        email: savedUser.email || "",
+        role_name: savedUser.role_name || "Shop Admin",
+        token: data.token,
+      }).catch(() => {});
+      triggerAutoSync(data.token).catch(() => {});
 
       if (!saveSession(data.token, savedUser)) {
         setError(
@@ -1042,6 +1066,7 @@ function App() {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+            <SyncStatusBadge darkMode={dark} />
             {themeToggle}
 
             <div

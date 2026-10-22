@@ -56,7 +56,8 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "desktop/assets/syncora.ico"
+      "icon": "desktop/assets/syncora.ico",
+      "signExecutable": false
     },
     "nsis": {
       "oneClick": false,

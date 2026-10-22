@@ -1,6 +1,8 @@
+import { smartApiRequest } from "../offline/offlineApi";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { exportPdfFile, exportCsvFile } from "../utils/exportReport";
 
 type ReportType =
   | "CURRENT_STOCK"
@@ -183,28 +185,12 @@ export default function Reports() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [inResponse, outResponse] = await Promise.all([
-        fetch(`${API_BASE}/stock/in`, { headers }),
-        fetch(`${API_BASE}/stock/out`, { headers }),
+      const [inJson, outJson] = await Promise.all([
+        smartApiRequest("/stock/in"),
+        smartApiRequest("/stock/out"),
       ]);
 
-      if (
-        inResponse.status === 401 ||
-        outResponse.status === 401
-      ) {
-        throw new Error(
-          "Session expired. Please log in again."
-        );
-      }
-
-      if (!inResponse.ok || !outResponse.ok) {
-        throw new Error(
-          "Failed to load stock report data. Please verify your connection."
-        );
-      }
-
-      const inJson = await inResponse.json();
-      const outJson = await outResponse.json();
+      // Data retrieved from smart API / offline cache
 
       if (inJson.success === false || outJson.success === false) {
         throw new Error(
@@ -739,7 +725,7 @@ export default function Reports() {
     setError("");
   };
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
     if (!reportRows.length) {
       setNotice("No records available to export.");
       return;
@@ -784,23 +770,15 @@ export default function Reports() {
       ),
     ];
 
-    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `stock-report-${reportType.toLowerCase()}-${today}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-
-    setNotice("CSV report exported successfully. You can open this file in Excel or Sheets.");
+    const res = await exportCsvFile(
+      lines.join("\r\n"),
+      `stock-report-${reportType.toLowerCase()}-${today}.csv`,
+      `Stock Report - ${reportType}`
+    );
+    setNotice(res.message);
   };
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
     if (!reportRows.length) {
       setNotice("No records available to export.");
       return;
@@ -863,8 +841,12 @@ export default function Reports() {
       horizontalPageBreakRepeat: 0,
     });
 
-    doc.save(`stock-report-${reportType.toLowerCase()}-${today}.pdf`);
-    setNotice("PDF report exported successfully.");
+    const res = await exportPdfFile(
+      doc,
+      `stock-report-${reportType.toLowerCase()}-${today}.pdf`,
+      selectedLabel
+    );
+    setNotice(res.message);
   };
 
   const reportLabel =

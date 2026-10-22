@@ -1,3 +1,4 @@
+import { smartApiRequest } from "../offline/offlineApi";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { API } from "../config/api";
@@ -35,24 +36,7 @@ const sizeUnits = ["ML", "Liter", "Gram", "KG", "MG", "Piece"];
 const stockUnits = ["Bottle", "Packet", "Bag", "Piece", "Box", "Can", "Carton"];
 
 async function apiRequest(path: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("token");
-
-  const response = await fetch(`${API}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
-
-  const result = await response.json().catch(() => ({}));
-
-  if (!response.ok || result.success === false) {
-    throw new Error(result.message || "Request failed");
-  }
-
-  return result;
+  return smartApiRequest(path, options);
 }
 
 function getPackSize(product: Product) {

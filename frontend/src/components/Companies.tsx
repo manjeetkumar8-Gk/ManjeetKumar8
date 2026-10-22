@@ -1,3 +1,4 @@
+import { smartApiRequest } from "../offline/offlineApi";
 import { useEffect, useState, type FormEvent } from "react";
 
 type Company = {
@@ -49,18 +50,7 @@ function Companies() {
 
   const fetchCompanies = async () => {
     try {
-      const response = await fetch(`${API}/companies`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || "Unable to fetch companies");
-        return;
-      }
+      const data = await smartApiRequest("/companies");
 
       setCompanies(data.companies || data.data || []);
     } catch (err) {

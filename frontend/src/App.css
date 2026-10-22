@@ -1,21 +1,22 @@
-
-/* ==========================================
+/* ==========================================================================
    SYNCORA STOCK MANAGEMENT SYSTEM
-   GLOBAL DARK TEAL THEME
-   Colors only — preserve layout
-========================================== */
+   PREMIUM ENTERPRISE DESIGN SYSTEM: MIDNIGHT NAVY & PRECISION TEAL
+   Engineered for maximum eye comfort, clarity, and executive presentation
+   ========================================================================== */
 
 html.dark {
   color-scheme: dark;
 
-  --app-bg: #0b171a;
-  --app-card-bg: #0f282a;
-  --app-card-border: #1d484c;
-  --app-text: #ffffff;
-  --app-muted: #c2d5d6;
-  --app-input-bg: #0a1d1f;
-  --app-input-border: #23555a;
-  --app-accent: #5eead4;
+  /* Eye-friendly Midnight Slate & Precision Jewel Teal */
+  --app-bg: #0b0f19;
+  --app-card-bg: #111827;
+  --app-card-border: #1f293d;
+  --app-text: #f8fafc;
+  --app-muted: #94a3b8;
+  --app-input-bg: #0d1424;
+  --app-input-border: #23304a;
+  --app-accent: #14b8a6;
+  --app-accent-hover: #0d9488;
 }
 
 /* Page background */
@@ -27,7 +28,7 @@ html.dark main {
   color: var(--app-text) !important;
 }
 
-/* All common cards and panels */
+/* Cards, stat containers, and panels */
 html.dark .sm-panel,
 html.dark .sm-card,
 html.dark .sm-stat-card,
@@ -73,7 +74,7 @@ html.dark .sm-stat-value,
 html.dark .sm-cell-primary,
 html.dark .stock-product-details strong,
 html.dark .stock-in-summary strong {
-  color: #ffffff !important;
+  color: #f8fafc !important;
 }
 
 /* Text inside containers */
@@ -101,14 +102,6 @@ html.dark .sm-eyebrow {
   color: var(--app-accent) !important;
 }
 
-/* Panel dividers */
-html.dark .sm-panel-header,
-html.dark .sm-form-actions,
-html.dark .sm-panel-footer,
-html.dark .sm-field {
-  border-color: var(--app-card-border) !important;
-}
-
 /* Inputs, dropdowns and text areas */
 html.dark .sm-input,
 html.dark input,
@@ -116,21 +109,21 @@ html.dark select,
 html.dark textarea {
   background-color: var(--app-input-bg) !important;
   border-color: var(--app-input-border) !important;
-  color: #ffffff !important;
+  color: #f8fafc !important;
 }
 
 /* Input placeholders */
 html.dark .sm-input::placeholder,
 html.dark input::placeholder,
 html.dark textarea::placeholder {
-  color: #b8cbcd !important;
+  color: #64748b !important;
   opacity: 1;
 }
 
 /* Dropdown options */
 html.dark select option {
   background-color: var(--app-card-bg) !important;
-  color: #ffffff !important;
+  color: #f8fafc !important;
 }
 
 /* Focus states */
@@ -139,36 +132,73 @@ html.dark input:focus,
 html.dark select:focus,
 html.dark textarea:focus {
   border-color: var(--app-accent) !important;
-  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.15) !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2) !important;
 }
 
-/* Date picker icon */
-html.dark input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  cursor: pointer;
+/* ==========================================================================
+   DATE & TIME PICKER ACCESSIBILITY & VISIBILITY FIX (DARK MODE)
+   Ensures calendar indicator is always razor-sharp and clearly visible
+   ========================================================================== */
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  position: relative;
+  color-scheme: light;
+}
+
+html.dark input[type="date"],
+html.dark input[type="time"],
+html.dark input[type="datetime-local"],
+.dark input[type="date"],
+.dark input[type="time"],
+.dark input[type="datetime-local"] {
+  color-scheme: dark !important;
+}
+
+/* Make calendar icon prominently visible in dark mode */
+html.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+html.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  display: inline-block !important;
+  filter: brightness(0) invert(1) !important; /* Forces pure bright white icon */
+  opacity: 0.95 !important;
+  cursor: pointer !important;
+  padding: 4px 6px !important;
+  border-radius: 6px !important;
+  background-color: rgba(20, 184, 166, 0.22) !important; /* Eye-friendly soft teal badge */
+  transition: all 0.15s ease-in-out !important;
+}
+
+html.dark input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  background-color: rgba(20, 184, 166, 0.45) !important;
+  opacity: 1 !important;
+  transform: scale(1.08);
 }
 
 /* Primary buttons */
 html.dark .sm-btn-primary {
-  background-color: #0f766e !important;
-  border-color: #0f766e !important;
+  background-color: #0d9488 !important;
+  border-color: #0d9488 !important;
   color: #ffffff !important;
 }
 
 html.dark .sm-btn-primary:hover:not(:disabled) {
-  background-color: #115e59 !important;
-  border-color: #115e59 !important;
+  background-color: #0f766e !important;
+  border-color: #0f766e !important;
 }
 
 /* Secondary buttons */
 html.dark .sm-btn-secondary {
-  background-color: #173d3f !important;
+  background-color: #1a2538 !important;
   border-color: var(--app-card-border) !important;
-  color: #ffffff !important;
+  color: #f1f5f9 !important;
 }
 
 html.dark .sm-btn-secondary:hover:not(:disabled) {
-  background-color: #1d484c !important;
+  background-color: #223048 !important;
 }
 
 /* Tables */
@@ -179,7 +209,7 @@ html.dark .sm-table {
 
 html.dark table thead,
 html.dark .sm-table thead {
-  background-color: #0b2224 !important;
+  background-color: #0c1424 !important;
 }
 
 html.dark table th,
@@ -191,24 +221,26 @@ html.dark .sm-table th {
 
 html.dark table td,
 html.dark .sm-table td {
-  color: #ffffff !important;
+  color: #f8fafc !important;
   border-color: var(--app-card-border) !important;
 }
 
 html.dark table tbody tr:hover,
 html.dark .sm-table tbody tr:hover {
-  background-color: #163638 !important;
+  background-color: #172235 !important;
 }
 
 /* Status badges */
 html.dark .sm-status-active {
-  background-color: #064e3b !important;
+  background-color: rgba(16, 185, 129, 0.15) !important;
   color: #6ee7b7 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
 }
 
 html.dark .sm-status-inactive {
-  background-color: #7f1d1d !important;
+  background-color: rgba(239, 68, 68, 0.15) !important;
   color: #fca5a5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
 }
 
 /* Action buttons */
@@ -220,26 +252,25 @@ html.dark .sm-action-danger {
   color: #f87171 !important;
 }
 
-/* Success notifications */
+/* Notifications */
 html.dark [data-sonner-toast][data-type="success"],
 html.dark .Toastify__toast--success,
 html.dark .toast-success,
 html.dark .alert-success,
 html.dark .notification-success {
-  background-color: #123b35 !important;
-  border-color: #218b78 !important;
+  background-color: #0d2822 !important;
+  border-color: #14b8a6 !important;
   color: #d1fae5 !important;
 }
 
-/* Error notifications */
 html.dark [data-sonner-toast][data-type="error"],
 html.dark .Toastify__toast--error,
 html.dark .toast-error,
 html.dark .alert-error,
 html.dark .alert-danger,
 html.dark .notification-error {
-  background-color: #3b2025 !important;
-  border-color: #a94452 !important;
+  background-color: #2b1318 !important;
+  border-color: #e11d48 !important;
   color: #fecaca !important;
 }
 

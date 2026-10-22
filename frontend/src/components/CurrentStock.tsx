@@ -1,3 +1,4 @@
+import { smartApiRequest } from "../offline/offlineApi";
 import { useEffect, useState } from "react";
 
 import { API } from "../config/api";
@@ -25,17 +26,7 @@ type StockRow = {
 };
 
 async function request(path: string) {
-  const token = localStorage.getItem("token");
-  const response = await fetch(`${API}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  const result = await response.json().catch(() => ({}));
-
-  if (!response.ok || result.success === false) {
-    throw new Error(result.message || "Request failed");
-  }
-
-  return result;
+  return smartApiRequest(path);
 }
 
 function packLabel(row: StockRow) {
