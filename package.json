@@ -1,33 +1,13 @@
 {
-  "name": "syncora-stock-management",
-  "version": "1.0.0",
-  "main": "desktop/main.cjs",
-  "dependencies": {
-    "bcrypt": "^6.0.0",
-    "cors": "^2.8.6",
-    "dotenv": "^18.0.6",
-    "express": "^5.2.1",
-    "helmet": "^8.3.0",
-    "jsonwebtoken": "^9.0.3",
-    "nodemailer": "^10.0.16",
-    "pg": "^8.23.1",
-    "zod": "^4.6.5"
-  },
   "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^26.6.4",
-    "@types/nodemailer": "^8.0.2",
-    "@types/pg": "^8.23.1",
     "electron": "^44.9.0",
     "electron-builder": "^26.15.3",
     "png-to-ico": "^3.0.2",
-    "sharp": "^0.35.5",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "sharp": "^0.35.5"
   },
+  "name": "syncora-stock-management",
+  "version": "1.0.0",
+  "main": "desktop/main.cjs",
   "scripts": {
     "start:desktop": "electron .",
     "installer": "npm run build && electron-builder --win nsis",
