@@ -11,11 +11,11 @@ export async function smartApiRequest<T = any>(
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const url = `${API}${cleanEndpoint}`;
 
-  // 1. If user is online, attempt network call with quick 6s timeout
+  // 1. If online, try network call with 5s timeout
   if (typeof navigator === "undefined" || navigator.onLine) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
       const response = await fetch(url, {
         ...options,
@@ -37,7 +37,7 @@ export async function smartApiRequest<T = any>(
         return result as T;
       }
     } catch (networkError) {
-      console.warn("Network unavailable, seamlessly using local offline storage:", endpoint, networkError);
+      console.warn("Network unavailable, falling back to offline storage:", endpoint);
     }
   }
 
@@ -50,7 +50,7 @@ async function cacheRemoteResponse(endpoint: string, method: string, data: any) 
 
   const rows = Array.isArray(data)
     ? data
-    : data.data || data.rows || data.companies || data.products || data.customers || data.warehouses || data.vehicles || [];
+    : data.data || data.rows || data.companies || data.products || data.customers || data.warehouses || data.vehicles || data.users || [];
 
   if (!Array.isArray(rows)) return;
 
@@ -65,6 +65,8 @@ async function cacheRemoteResponse(endpoint: string, method: string, data: any) 
       await offlineDb.warehouses.bulkPut(rows);
     } else if (endpoint.includes("/vehicles")) {
       await offlineDb.vehicles.bulkPut(rows);
+    } else if (endpoint.includes("/users")) {
+      await offlineDb.users.bulkPut(rows);
     } else if (endpoint.includes("/stock/in")) {
       const records = rows.map((r) => ({ ...r, type: "IN" as const }));
       await offlineDb.stock_records.bulkPut(records);
@@ -77,39 +79,78 @@ async function cacheRemoteResponse(endpoint: string, method: string, data: any) 
   }
 }
 
+function extractIdFromEndpoint(endpoint: string): number | null {
+  const parts = endpoint.split("?")[0].split("/");
+  const last = parts[parts.length - 1];
+  const num = Number(last);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
+function extractSearchQuery(endpoint: string): string {
+  try {
+    const qIndex = endpoint.indexOf("?");
+    if (qIndex === -1) return "";
+    const params = new URLSearchParams(endpoint.slice(qIndex));
+    return (params.get("search") || "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 async function handleOfflineFallback<T>(
   endpoint: string,
   method: string,
   options: RequestInit
 ): Promise<T> {
   const cleanEndpoint = endpoint.toLowerCase();
+  const search = extractSearchQuery(endpoint);
   const body = options.body ? JSON.parse(options.body as string) : {};
 
   // GET Requests - Read from Local IndexedDB
   if (method === "GET") {
     if (cleanEndpoint.includes("/companies")) {
-      const rows = await offlineDb.companies.toArray();
+      let rows = await offlineDb.companies.toArray();
+      if (search) {
+        rows = rows.filter((c) => c.company_name.toLowerCase().includes(search));
+      }
       return { success: true, data: rows, companies: rows, message: "Loaded from local offline storage" } as unknown as T;
     }
 
     if (cleanEndpoint.includes("/products")) {
-      const rows = await offlineDb.products.toArray();
+      let rows = await offlineDb.products.toArray();
+      if (search) {
+        rows = rows.filter((p) => p.product_name.toLowerCase().includes(search));
+      }
       return { success: true, data: rows, products: rows, message: "Loaded from local offline storage" } as unknown as T;
     }
 
     if (cleanEndpoint.includes("/customers")) {
-      const rows = await offlineDb.customers.toArray();
+      let rows = await offlineDb.customers.toArray();
+      if (search) {
+        rows = rows.filter((c) => c.customer_name.toLowerCase().includes(search));
+      }
       return { success: true, data: rows, customers: rows, message: "Loaded from local offline storage" } as unknown as T;
     }
 
     if (cleanEndpoint.includes("/warehouses")) {
-      const rows = await offlineDb.warehouses.toArray();
+      let rows = await offlineDb.warehouses.toArray();
+      if (search) {
+        rows = rows.filter((w) => w.warehouse_name.toLowerCase().includes(search));
+      }
       return { success: true, data: rows, warehouses: rows, message: "Loaded from local offline storage" } as unknown as T;
     }
 
     if (cleanEndpoint.includes("/vehicles")) {
-      const rows = await offlineDb.vehicles.toArray();
+      let rows = await offlineDb.vehicles.toArray();
+      if (search) {
+        rows = rows.filter((v) => v.vehicle_number.toLowerCase().includes(search));
+      }
       return { success: true, data: rows, vehicles: rows, message: "Loaded from local offline storage" } as unknown as T;
+    }
+
+    if (cleanEndpoint.includes("/users")) {
+      const rows = await offlineDb.users.toArray();
+      return { success: true, data: rows, users: rows, message: "Loaded from local offline storage" } as unknown as T;
     }
 
     if (cleanEndpoint.includes("/stock/in")) {
@@ -126,7 +167,6 @@ async function handleOfflineFallback<T>(
       const allRecords = await offlineDb.stock_records.toArray();
       const allProducts = await offlineDb.products.toArray();
 
-      // Compute stock per product
       const stockMap = new Map<number, { inQty: number; outQty: number }>();
       for (const rec of allRecords) {
         const pid = rec.product_id;
@@ -164,6 +204,7 @@ async function handleOfflineFallback<T>(
   if (method === "POST" || method === "PUT" || method === "DELETE") {
     const localId = Date.now();
     const actionMethod = method as "POST" | "PUT" | "DELETE";
+    const entityId = extractIdFromEndpoint(endpoint);
 
     if (cleanEndpoint.includes("/stock/in")) {
       const record = {
@@ -211,38 +252,58 @@ async function handleOfflineFallback<T>(
     }
 
     if (cleanEndpoint.includes("/products")) {
-      const product = { ...body, id: localId, status: "active" };
-      await offlineDb.products.add(product);
+      if (actionMethod === "DELETE" && entityId) {
+        await offlineDb.products.delete(entityId);
+      } else {
+        const product = { ...body, id: entityId || body.id || localId, status: body.status || "active" };
+        await offlineDb.products.put(product);
+      }
       await queueLocalAction("products", endpoint, actionMethod, body);
-      return { success: true, message: "Product saved locally! Will sync when connected.", data: product } as unknown as T;
+      return { success: true, message: "Product updated locally! Will sync when connected.", data: body } as unknown as T;
     }
 
     if (cleanEndpoint.includes("/companies")) {
-      const company = { ...body, id: localId, status: "active" };
-      await offlineDb.companies.add(company);
+      if (actionMethod === "DELETE" && entityId) {
+        await offlineDb.companies.delete(entityId);
+      } else {
+        const company = { ...body, id: entityId || body.id || localId, status: body.status || "active" };
+        await offlineDb.companies.put(company);
+      }
       await queueLocalAction("companies", endpoint, actionMethod, body);
-      return { success: true, message: "Company saved locally! Will sync when connected.", data: company } as unknown as T;
+      return { success: true, message: "Company updated locally! Will sync when connected.", data: body } as unknown as T;
     }
 
     if (cleanEndpoint.includes("/customers")) {
-      const customer = { ...body, id: localId, status: "active" };
-      await offlineDb.customers.add(customer);
+      if (actionMethod === "DELETE" && entityId) {
+        await offlineDb.customers.delete(entityId);
+      } else {
+        const customer = { ...body, id: entityId || body.id || localId, status: body.status || "active" };
+        await offlineDb.customers.put(customer);
+      }
       await queueLocalAction("customers", endpoint, actionMethod, body);
-      return { success: true, message: "Customer saved locally! Will sync when connected.", data: customer } as unknown as T;
+      return { success: true, message: "Customer updated locally! Will sync when connected.", data: body } as unknown as T;
     }
 
     if (cleanEndpoint.includes("/warehouses")) {
-      const wh = { ...body, id: localId, status: "active" };
-      await offlineDb.warehouses.add(wh);
+      if (actionMethod === "DELETE" && entityId) {
+        await offlineDb.warehouses.delete(entityId);
+      } else {
+        const wh = { ...body, id: entityId || body.id || localId, status: body.status || "active" };
+        await offlineDb.warehouses.put(wh);
+      }
       await queueLocalAction("warehouses", endpoint, actionMethod, body);
-      return { success: true, message: "Warehouse saved locally! Will sync when connected.", data: wh } as unknown as T;
+      return { success: true, message: "Warehouse updated locally! Will sync when connected.", data: body } as unknown as T;
     }
 
     if (cleanEndpoint.includes("/vehicles")) {
-      const veh = { ...body, id: localId, status: "active" };
-      await offlineDb.vehicles.add(veh);
+      if (actionMethod === "DELETE" && entityId) {
+        await offlineDb.vehicles.delete(entityId);
+      } else {
+        const veh = { ...body, id: entityId || body.id || localId, status: body.status || "active" };
+        await offlineDb.vehicles.put(veh);
+      }
       await queueLocalAction("vehicles", endpoint, actionMethod, body);
-      return { success: true, message: "Vehicle saved locally! Will sync when connected.", data: veh } as unknown as T;
+      return { success: true, message: "Vehicle updated locally! Will sync when connected.", data: body } as unknown as T;
     }
 
     await queueLocalAction("entity", endpoint, actionMethod, body);

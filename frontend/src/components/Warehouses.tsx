@@ -35,16 +35,9 @@ export default function Warehouses() {
     setError("");
 
     try {
-      const response = await fetch(
-        `${API}?search=${encodeURIComponent(search)}`,
-        { headers: getHeaders() }
+      const data = await smartApiRequest(
+        `/warehouses?search=${encodeURIComponent(search)}`
       );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to load warehouses.");
-      }
 
       const records = Array.isArray(data)
         ? data
@@ -97,20 +90,11 @@ export default function Warehouses() {
     setSaving(true);
 
     try {
-      const response = await fetch(
-        editingId === null ? API : `${API}/${editingId}`,
-        {
-          method: editingId === null ? "POST" : "PUT",
-          headers: getHeaders(),
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to save warehouse.");
-      }
+      const endpoint = editingId === null ? "/warehouses" : `/warehouses/${editingId}`;
+      const data = await smartApiRequest(endpoint, {
+        method: editingId === null ? "POST" : "PUT",
+        body: JSON.stringify(payload),
+      });
 
       setMessage(
         editingId === null
@@ -153,18 +137,9 @@ export default function Warehouses() {
     setSaving(true);
 
     try {
-      const response = await fetch(`${API}/${warehouse.id}`, {
+      const data = await smartApiRequest(`/warehouses/${warehouse.id}`, {
         method: "DELETE",
-        headers: getHeaders(),
       });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to delete warehouse."
-        );
-      }
 
       setMessage("Warehouse deleted successfully.");
       if (editingId === warehouse.id) resetForm();

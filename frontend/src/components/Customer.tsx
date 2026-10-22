@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { API } from "../config/api";
+import { smartApiRequest } from "../offline/offlineApi";
 
 type CustomerRecord = {
   id: number;
@@ -45,20 +46,9 @@ export default function Customer() {
     setError("");
 
     try {
-      const token = getToken();
-      const response = await fetch(
-        `${API}/customers?search=${encodeURIComponent(search.trim())}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const result = await smartApiRequest<ApiResult>(
+        `/customers?search=${encodeURIComponent(search.trim())}`
       );
-
-      const result: ApiResult = await response.json();
-
-      if (response.status === 401) {
-        throw new Error("Your session is invalid or expired. Please log in again.");
-      }
-      if (!response.ok || result.success === false) {
-        throw new Error(result.message || "Failed to load customers.");
-      }
 
       const rows = Array.isArray(result.customers)
         ? result.customers
@@ -118,16 +108,11 @@ export default function Customer() {
     setSuccess("");
 
     try {
-      const token = getToken();
-      const path = editingId !== null ? `${API}/customers/${editingId}` : `${API}/customers`;
+      const endpoint = editingId !== null ? `/customers/${editingId}` : `/customers`;
       const method = editingId !== null ? "PUT" : "POST";
 
-      const response = await fetch(path, {
+      const result = await smartApiRequest<ApiResult>(endpoint, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           customer_name: cleanName,
           cnic: cnic.trim() || undefined,
@@ -136,15 +121,6 @@ export default function Customer() {
           remarks: remarks.trim() || undefined,
         }),
       });
-
-      const result: ApiResult = await response.json();
-
-      if (response.status === 401) {
-        throw new Error("Your session is invalid or expired. Please log in again.");
-      }
-      if (!response.ok || result.success === false) {
-        throw new Error(result.message || "Failed to save customer.");
-      }
 
       setSuccess(
         result.message ||
@@ -171,20 +147,9 @@ export default function Customer() {
     setSuccess("");
 
     try {
-      const token = getToken();
-      const response = await fetch(`${API}/customers/${customer.id}`, {
+      const result = await smartApiRequest<ApiResult>(`/customers/${customer.id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
-
-      const result: ApiResult = await response.json();
-
-      if (response.status === 401) {
-        throw new Error("Your session is invalid or expired. Please log in again.");
-      }
-      if (!response.ok || result.success === false) {
-        throw new Error(result.message || "Failed to delete customer.");
-      }
 
       if (editingId === customer.id) resetForm();
       setSuccess(result.message || "Customer deleted successfully.");

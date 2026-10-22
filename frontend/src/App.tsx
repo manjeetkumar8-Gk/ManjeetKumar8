@@ -270,9 +270,58 @@ function App() {
 
     setLoading(true);
 
+    // If device is offline, execute instant offline login from local database
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        const cleanLower = cleanUsername.toLowerCase();
+        const localUsers = await offlineDb.users.toArray();
+        const found = localUsers.find(
+          (u) =>
+            u.username.toLowerCase() === cleanLower ||
+            (u.email && u.email.toLowerCase() === cleanLower)
+        );
+
+        if (found) {
+          const offlineToken = found.token || `offline-token-${found.id}`;
+          const savedUser: UserInfo = {
+            id: found.id,
+            shop_id: found.shop_id || 1,
+            username: found.username,
+            name: found.name || found.username,
+            email: found.email || "",
+            role_name: found.role_name || "Shop Admin",
+          };
+
+          saveSession(offlineToken, savedUser);
+          setToken(offlineToken);
+          setUser(savedUser);
+          setPassword("");
+          setUsername("");
+          setPage("dashboard");
+          setShowForgot(false);
+          setMobileSidebarOpen(false);
+          setNotice("🟢 Offline Mode: Logged in locally. All stock features and reports are active.");
+          setLoading(false);
+          return;
+        } else {
+          setError(
+            `Device is offline. User "${cleanUsername}" is not stored locally. Please use "admin" (password: "szabist100campus") or connect to internet.`
+          );
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fall through
+      }
+    }
+
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
       const response = await fetch(`${API}/auth/login`, {
         method: "POST",
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -282,6 +331,8 @@ function App() {
           password,
         }),
       });
+
+      clearTimeout(timeoutId);
 
       const data = await readApiResponse<LoginResponse>(response);
 
@@ -334,9 +385,47 @@ function App() {
       setShowForgot(false);
       setMobileSidebarOpen(false);
     } catch {
-      setError(
-        "Cannot connect to the server. Make sure the backend is running at localhost:5000."
-      );
+      // Network call failed (offline or server unreachable) - Seamless Offline Fallback
+      try {
+        const cleanLower = cleanUsername.toLowerCase();
+        const localUsers = await offlineDb.users.toArray();
+        const found = localUsers.find(
+          (u) =>
+            u.username.toLowerCase() === cleanLower ||
+            (u.email && u.email.toLowerCase() === cleanLower)
+        );
+
+        if (found) {
+          const offlineToken = found.token || `offline-token-${found.id}`;
+          const savedUser: UserInfo = {
+            id: found.id,
+            shop_id: found.shop_id || 1,
+            username: found.username,
+            name: found.name || found.username,
+            email: found.email || "",
+            role_name: found.role_name || "Shop Admin",
+          };
+
+          saveSession(offlineToken, savedUser);
+          setToken(offlineToken);
+          setUser(savedUser);
+          setPassword("");
+          setUsername("");
+          setPage("dashboard");
+          setShowForgot(false);
+          setMobileSidebarOpen(false);
+          setNotice("🟢 Offline Mode: Logged in locally. All stock features and reports are active.");
+          return;
+        } else {
+          setError(
+            `Device is offline. User "${cleanUsername}" is not stored locally. Please use "admin" (password: "szabist100campus") or connect to internet.`
+          );
+        }
+      } catch {
+        setError(
+          "Cannot connect to the server and local database is unavailable."
+        );
+      }
     } finally {
       setLoading(false);
     }

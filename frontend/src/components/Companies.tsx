@@ -110,32 +110,20 @@ function Companies() {
     try {
       const isEditing = editingCompanyId !== null;
 
-      const response = await fetch(
-        isEditing
-          ? `${API}/companies/${editingCompanyId}`
-          : `${API}/companies`,
-        {
-          method: isEditing ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            company_name: cleanedName,
-            contact_person: contactPerson.trim(),
-            phone: phone.trim(),
-            email: email.trim(),
-            address: address.trim(),
-          }),
-        }
-      );
+      const endpoint = isEditing
+        ? `/companies/${editingCompanyId}`
+        : "/companies";
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || "Unable to save company");
-        return;
-      }
+      const data = await smartApiRequest(endpoint, {
+        method: isEditing ? "PUT" : "POST",
+        body: JSON.stringify({
+          company_name: cleanedName,
+          contact_person: contactPerson.trim(),
+          phone: phone.trim(),
+          email: email.trim(),
+          address: address.trim(),
+        }),
+      });
 
       setMessage(
         isEditing

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { API } from "../config/api";
+import { smartApiRequest } from "../offline/offlineApi";
 
 export type Vehicle = {
   id: number;
@@ -30,28 +31,7 @@ export default function Vehicles() {
   const [search, setSearch] = useState("");
 
   async function request(path: string, options: RequestInit = {}) {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      throw new Error("Session expired. Please log in again.");
-    }
-
-    const response = await fetch(`${API}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
-
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(result.message || "Request failed.");
-    }
-
-    return result;
+    return smartApiRequest(path, options);
   }
 
   async function loadVehicles() {
