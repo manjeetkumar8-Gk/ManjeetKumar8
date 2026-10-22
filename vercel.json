@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "backend/src/server.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["backend/public/**"]
+      }
     },
     {
       "src": "frontend/package.json",
@@ -41,6 +44,10 @@
     {
       "src": "/favicon.svg",
       "dest": "frontend/favicon.svg"
+    },
+    {
+      "src": "/icons.svg",
+      "dest": "frontend/icons.svg"
     },
     {
       "src": "/(.*)",

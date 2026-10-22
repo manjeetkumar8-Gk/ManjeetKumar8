@@ -3,13 +3,48 @@
   "builds": [
     {
       "src": "src/server.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["public/**"]
+      }
     }
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/api/(.*)",
       "dest": "src/server.ts"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "public/assets/$1"
+    },
+    {
+      "src": "/sw.js",
+      "dest": "public/sw.js"
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "public/manifest.json"
+    },
+    {
+      "src": "/icon-(.*)",
+      "dest": "public/icon-$1"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "dest": "public/apple-touch-icon.png"
+    },
+    {
+      "src": "/favicon.svg",
+      "dest": "public/favicon.svg"
+    },
+    {
+      "src": "/icons.svg",
+      "dest": "public/icons.svg"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "public/index.html"
     }
   ]
 }
