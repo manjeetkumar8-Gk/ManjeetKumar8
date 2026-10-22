@@ -48,6 +48,14 @@ app.use("/api/users", userRoutes);
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/backup", backupRoutes);
 
+// API root status
+app.get(["/api", "/api/"], (_req, res) => {
+  res.json({
+    success: true,
+    message: "Syncora Stock Management API is running",
+  });
+});
+
 // Health check
 app.get("/api/health", async (_req, res) => {
   try {

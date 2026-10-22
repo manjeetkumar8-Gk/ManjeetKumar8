@@ -1,4 +1,4 @@
-const CACHE_NAME = "syncora-stock-v1";
+const CACHE_NAME = "syncora-stock-v2";
 const STATIC_ASSETS = [
   "/",
   "/index.html",

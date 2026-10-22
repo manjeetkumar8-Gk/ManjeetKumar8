@@ -1,9 +1,11 @@
-﻿import { defineConfig } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+const isDesktop = process.env.ELECTRON_BUILD === "true";
+
 export default defineConfig({
-  base: "./",
+  base: isDesktop ? "./" : "/",
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
