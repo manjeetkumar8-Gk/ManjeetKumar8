@@ -8,6 +8,7 @@ export interface LocalUser {
   email?: string;
   role_name?: string;
   token?: string;
+  password?: string;
 }
 
 export interface LocalCompany {

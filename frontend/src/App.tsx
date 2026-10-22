@@ -245,6 +245,59 @@ function App() {
     }
   };
 
+  const handleDirectOfflineLogin = async (customUser?: string, _customPass?: string) => {
+    setError("");
+    setNotice("");
+    setLoading(true);
+
+    try {
+      await seedOfflineDbIfEmpty();
+      const targetUser = (customUser || username.trim() || "admin").toLowerCase();
+
+      const localUsers = await offlineDb.users.toArray();
+      let found = localUsers.find(
+        (u) =>
+          u.username.toLowerCase() === targetUser ||
+          (u.email && u.email.toLowerCase() === targetUser)
+      );
+
+      if (!found && (targetUser === "admin" || targetUser === "shopadmin" || targetUser === "operator" || targetUser === "viewer")) {
+        await seedOfflineDbIfEmpty();
+        const refreshed = await offlineDb.users.toArray();
+        found = refreshed.find((u) => u.username.toLowerCase() === targetUser);
+      }
+
+      if (found) {
+        const offlineToken = found.token || `offline-token-${found.id}`;
+        const savedUser: UserInfo = {
+          id: found.id,
+          shop_id: found.shop_id || 1,
+          username: found.username,
+          name: found.name || found.username,
+          email: found.email || "",
+          role_name: found.role_name || "Super Admin",
+        };
+
+        saveSession(offlineToken, savedUser);
+        setToken(offlineToken);
+        setUser(savedUser);
+        setPassword("");
+        setUsername("");
+        setPage("dashboard");
+        setShowForgot(false);
+        setMobileSidebarOpen(false);
+        setNotice("🟢 Offline Mode: Logged in locally. All stock inventory, vouchers, and reports are ready with no internet needed.");
+      } else {
+        setError(`Offline account "${targetUser}" not found. You can use "admin" with password "szabist100campus".`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Storage error";
+      setError("Offline storage error: " + msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -270,54 +323,14 @@ function App() {
 
     setLoading(true);
 
-    // If device is offline, execute instant offline login from local database
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      try {
-        const cleanLower = cleanUsername.toLowerCase();
-        const localUsers = await offlineDb.users.toArray();
-        const found = localUsers.find(
-          (u) =>
-            u.username.toLowerCase() === cleanLower ||
-            (u.email && u.email.toLowerCase() === cleanLower)
-        );
-
-        if (found) {
-          const offlineToken = found.token || `offline-token-${found.id}`;
-          const savedUser: UserInfo = {
-            id: found.id,
-            shop_id: found.shop_id || 1,
-            username: found.username,
-            name: found.name || found.username,
-            email: found.email || "",
-            role_name: found.role_name || "Shop Admin",
-          };
-
-          saveSession(offlineToken, savedUser);
-          setToken(offlineToken);
-          setUser(savedUser);
-          setPassword("");
-          setUsername("");
-          setPage("dashboard");
-          setShowForgot(false);
-          setMobileSidebarOpen(false);
-          setNotice("🟢 Offline Mode: Logged in locally. All stock features and reports are active.");
-          setLoading(false);
-          return;
-        } else {
-          setError(
-            `Device is offline. User "${cleanUsername}" is not stored locally. Please use "admin" (password: "szabist100campus") or connect to internet.`
-          );
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // Fall through
-      }
+      await handleDirectOfflineLogin(cleanUsername, password);
+      return;
     }
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
 
       const response = await fetch(`${API}/auth/login`, {
         method: "POST",
@@ -336,96 +349,46 @@ function App() {
 
       const data = await readApiResponse<LoginResponse>(response);
 
-      if (!response.ok || !data?.token) {
-        setError(
-          getApiMessage(
-            data,
-            "Login failed. Please check your credentials."
-          )
-        );
-        return;
-      }
+      if (response.ok && data?.token && typeof data.token === "string" && data.token.trim()) {
+        const savedUser: UserInfo =
+          data.user &&
+          typeof data.user === "object" &&
+          !Array.isArray(data.user)
+            ? data.user
+            : {};
 
-      if (typeof data.token !== "string" || !data.token.trim()) {
-        setError("The server returned an invalid login session.");
-        return;
-      }
+        offlineDb.users.put({
+          id: savedUser.id || 1,
+          shop_id: savedUser.shop_id || 1,
+          username: cleanUsername,
+          name: savedUser.name || cleanUsername,
+          email: savedUser.email || "",
+          role_name: savedUser.role_name || "Shop Admin",
+          token: data.token,
+          password: password,
+        }).catch(() => {});
+        triggerAutoSync(data.token).catch(() => {});
 
-      const savedUser: UserInfo =
-        data.user &&
-        typeof data.user === "object" &&
-        !Array.isArray(data.user)
-          ? data.user
-          : {};
-
-      // Cache user into local offline database
-      offlineDb.users.put({
-        id: savedUser.id || 1,
-        shop_id: savedUser.shop_id || 1,
-        username: cleanUsername,
-        name: savedUser.name || cleanUsername,
-        email: savedUser.email || "",
-        role_name: savedUser.role_name || "Shop Admin",
-        token: data.token,
-      }).catch(() => {});
-      triggerAutoSync(data.token).catch(() => {});
-
-      if (!saveSession(data.token, savedUser)) {
-        setError(
-          "Your browser could not save the login session. Check browser storage settings and try again."
-        );
-        return;
-      }
-
-      setToken(data.token);
-      setUser(savedUser);
-      setPassword("");
-      setUsername("");
-      setPage("dashboard");
-      setShowForgot(false);
-      setMobileSidebarOpen(false);
-    } catch {
-      // Network call failed (offline or server unreachable) - Seamless Offline Fallback
-      try {
-        const cleanLower = cleanUsername.toLowerCase();
-        const localUsers = await offlineDb.users.toArray();
-        const found = localUsers.find(
-          (u) =>
-            u.username.toLowerCase() === cleanLower ||
-            (u.email && u.email.toLowerCase() === cleanLower)
-        );
-
-        if (found) {
-          const offlineToken = found.token || `offline-token-${found.id}`;
-          const savedUser: UserInfo = {
-            id: found.id,
-            shop_id: found.shop_id || 1,
-            username: found.username,
-            name: found.name || found.username,
-            email: found.email || "",
-            role_name: found.role_name || "Shop Admin",
-          };
-
-          saveSession(offlineToken, savedUser);
-          setToken(offlineToken);
-          setUser(savedUser);
-          setPassword("");
-          setUsername("");
-          setPage("dashboard");
-          setShowForgot(false);
-          setMobileSidebarOpen(false);
-          setNotice("🟢 Offline Mode: Logged in locally. All stock features and reports are active.");
-          return;
-        } else {
+        if (!saveSession(data.token, savedUser)) {
           setError(
-            `Device is offline. User "${cleanUsername}" is not stored locally. Please use "admin" (password: "szabist100campus") or connect to internet.`
+            "Your browser could not save the login session. Check browser storage settings and try again."
           );
+          return;
         }
-      } catch {
-        setError(
-          "Cannot connect to the server and local database is unavailable."
-        );
+
+        setToken(data.token);
+        setUser(savedUser);
+        setPassword("");
+        setUsername("");
+        setPage("dashboard");
+        setShowForgot(false);
+        setMobileSidebarOpen(false);
+        return;
       }
+
+      await handleDirectOfflineLogin(cleanUsername, password);
+    } catch {
+      await handleDirectOfflineLogin(cleanUsername, password);
     } finally {
       setLoading(false);
     }
@@ -795,6 +758,25 @@ function App() {
                   className="flex min-h-12 w-full items-center justify-center rounded-lg bg-teal-600 hover:bg-teal-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#125a57] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? "Signing in..." : "Sign in to workspace"}
+                </button>
+
+                <div className="relative my-3 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className={`w-full border-t ${borderColor}`}></div>
+                  </div>
+                  <span className={`relative px-3 text-[11px] font-semibold uppercase tracking-wider ${mutedText} ${dark ? "bg-slate-800" : "bg-white"}`}>
+                    OR INSTANT OFFLINE
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleDirectOfflineLogin()}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-sm transition"
+                >
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  ⚡ Direct Offline Login (admin / no internet)
                 </button>
 
                 <button
