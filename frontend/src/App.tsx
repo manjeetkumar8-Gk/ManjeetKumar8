@@ -245,59 +245,6 @@ function App() {
     }
   };
 
-  const handleDirectOfflineLogin = async (customUser?: string, _customPass?: string) => {
-    setError("");
-    setNotice("");
-    setLoading(true);
-
-    try {
-      await seedOfflineDbIfEmpty();
-      const targetUser = (customUser || username.trim() || "admin").toLowerCase();
-
-      const localUsers = await offlineDb.users.toArray();
-      let found = localUsers.find(
-        (u) =>
-          u.username.toLowerCase() === targetUser ||
-          (u.email && u.email.toLowerCase() === targetUser)
-      );
-
-      if (!found && (targetUser === "admin" || targetUser === "shopadmin" || targetUser === "operator" || targetUser === "viewer")) {
-        await seedOfflineDbIfEmpty();
-        const refreshed = await offlineDb.users.toArray();
-        found = refreshed.find((u) => u.username.toLowerCase() === targetUser);
-      }
-
-      if (found) {
-        const offlineToken = found.token || `offline-token-${found.id}`;
-        const savedUser: UserInfo = {
-          id: found.id,
-          shop_id: found.shop_id || 1,
-          username: found.username,
-          name: found.name || found.username,
-          email: found.email || "",
-          role_name: found.role_name || "Super Admin",
-        };
-
-        saveSession(offlineToken, savedUser);
-        setToken(offlineToken);
-        setUser(savedUser);
-        setPassword("");
-        setUsername("");
-        setPage("dashboard");
-        setShowForgot(false);
-        setMobileSidebarOpen(false);
-        setNotice("🟢 Offline Mode: Logged in locally. All stock inventory, vouchers, and reports are ready with no internet needed.");
-      } else {
-        setError(`Offline account "${targetUser}" not found. You can use "admin" with password "szabist100campus".`);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Storage error";
-      setError("Offline storage error: " + msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -323,14 +270,57 @@ function App() {
 
     setLoading(true);
 
+    // If device is offline, check if this shop user has a cached session on this device
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      await handleDirectOfflineLogin(cleanUsername, password);
-      return;
+      try {
+        const cleanLower = cleanUsername.toLowerCase();
+        const localUsers = await offlineDb.users.toArray();
+        const found = localUsers.find(
+          (u) =>
+            u.username.toLowerCase() === cleanLower ||
+            (u.email && u.email.toLowerCase() === cleanLower)
+        );
+
+        if (found) {
+          const offlineToken = found.token || `offline-token-${found.id}`;
+          const savedUser: UserInfo = {
+            id: found.id,
+            shop_id: found.shop_id || 1,
+            username: found.username,
+            name: found.name || found.username,
+            email: found.email || "",
+            role_name: found.role_name || "Shop Admin",
+          };
+
+          saveSession(offlineToken, savedUser);
+          setToken(offlineToken);
+          setUser(savedUser);
+          setPassword("");
+          setUsername("");
+          setPage("dashboard");
+          setShowForgot(false);
+          setMobileSidebarOpen(false);
+          setNotice("🟢 Offline Mode: Logged in with your cached shop account. All local inventory and reports are ready.");
+          setLoading(false);
+          return;
+        } else {
+          setError(
+            "Device is offline. This account has not been authenticated on this device yet. Please connect to the internet once to log in."
+          );
+          setLoading(false);
+          return;
+        }
+      } catch {
+        setError("Device is offline and local storage could not be accessed.");
+        setLoading(false);
+        return;
+      }
     }
 
+    // Device is online: authenticate with cloud server
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const response = await fetch(`${API}/auth/login`, {
         method: "POST",
@@ -349,46 +339,95 @@ function App() {
 
       const data = await readApiResponse<LoginResponse>(response);
 
-      if (response.ok && data?.token && typeof data.token === "string" && data.token.trim()) {
-        const savedUser: UserInfo =
-          data.user &&
-          typeof data.user === "object" &&
-          !Array.isArray(data.user)
-            ? data.user
-            : {};
-
-        offlineDb.users.put({
-          id: savedUser.id || 1,
-          shop_id: savedUser.shop_id || 1,
-          username: cleanUsername,
-          name: savedUser.name || cleanUsername,
-          email: savedUser.email || "",
-          role_name: savedUser.role_name || "Shop Admin",
-          token: data.token,
-          password: password,
-        }).catch(() => {});
-        triggerAutoSync(data.token).catch(() => {});
-
-        if (!saveSession(data.token, savedUser)) {
-          setError(
-            "Your browser could not save the login session. Check browser storage settings and try again."
-          );
-          return;
-        }
-
-        setToken(data.token);
-        setUser(savedUser);
-        setPassword("");
-        setUsername("");
-        setPage("dashboard");
-        setShowForgot(false);
-        setMobileSidebarOpen(false);
+      if (!response.ok || !data?.token) {
+        setError(
+          getApiMessage(
+            data,
+            "Login failed. Please check your credentials."
+          )
+        );
         return;
       }
 
-      await handleDirectOfflineLogin(cleanUsername, password);
+      if (typeof data.token !== "string" || !data.token.trim()) {
+        setError("The server returned an invalid login session.");
+        return;
+      }
+
+      const savedUser: UserInfo =
+        data.user &&
+        typeof data.user === "object" &&
+        !Array.isArray(data.user)
+          ? data.user
+          : {};
+
+      // Cache authenticated user into local database for seamless offline working later
+      offlineDb.users.put({
+        id: savedUser.id || 1,
+        shop_id: savedUser.shop_id || 1,
+        username: cleanUsername,
+        name: savedUser.name || cleanUsername,
+        email: savedUser.email || "",
+        role_name: savedUser.role_name || "Shop Admin",
+        token: data.token,
+      }).catch(() => {});
+      triggerAutoSync(data.token).catch(() => {});
+
+      if (!saveSession(data.token, savedUser)) {
+        setError(
+          "Your browser could not save the login session. Check browser storage settings and try again."
+        );
+        return;
+      }
+
+      setToken(data.token);
+      setUser(savedUser);
+      setPassword("");
+      setUsername("");
+      setPage("dashboard");
+      setShowForgot(false);
+      setMobileSidebarOpen(false);
     } catch {
-      await handleDirectOfflineLogin(cleanUsername, password);
+      // If network request failed (connection dropped, server timeout):
+      // Check if user has an existing cached session on device
+      try {
+        const cleanLower = cleanUsername.toLowerCase();
+        const localUsers = await offlineDb.users.toArray();
+        const found = localUsers.find(
+          (u) =>
+            u.username.toLowerCase() === cleanLower ||
+            (u.email && u.email.toLowerCase() === cleanLower)
+        );
+
+        if (found) {
+          const offlineToken = found.token || `offline-token-${found.id}`;
+          const savedUser: UserInfo = {
+            id: found.id,
+            shop_id: found.shop_id || 1,
+            username: found.username,
+            name: found.name || found.username,
+            email: found.email || "",
+            role_name: found.role_name || "Shop Admin",
+          };
+
+          saveSession(offlineToken, savedUser);
+          setToken(offlineToken);
+          setUser(savedUser);
+          setPassword("");
+          setUsername("");
+          setPage("dashboard");
+          setShowForgot(false);
+          setMobileSidebarOpen(false);
+          setNotice("🟢 Offline Mode: Server unreachable, logged in with your local cached shop profile.");
+          return;
+        }
+      } catch {
+        // Fall through
+      }
+
+      setError(
+        "Unable to connect to the server. Please check your internet connection or verify your login credentials."
+      );
     } finally {
       setLoading(false);
     }
@@ -760,24 +799,7 @@ function App() {
                   {loading ? "Signing in..." : "Sign in to workspace"}
                 </button>
 
-                <div className="relative my-3 flex items-center justify-center">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className={`w-full border-t ${borderColor}`}></div>
-                  </div>
-                  <span className={`relative px-3 text-[11px] font-semibold uppercase tracking-wider ${mutedText} ${dark ? "bg-slate-800" : "bg-white"}`}>
-                    OR INSTANT OFFLINE
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleDirectOfflineLogin()}
-                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/20 px-4 py-2.5 text-sm font-bold text-emerald-600 dark:text-emerald-400 shadow-sm transition"
-                >
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  ⚡ Direct Offline Login (admin / no internet)
-                </button>
+                
 
                 <button
                   type="button"
