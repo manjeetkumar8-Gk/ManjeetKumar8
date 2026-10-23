@@ -158,12 +158,8 @@ function Companies() {
     setMessage("");
 
     try {
-      const response = await fetch(`${API}/companies/${company.id}`, {
+      const data = await smartApiRequest(`/companies/${company.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({
           company_name: company.company_name,
           contact_person: company.contact_person || "",
@@ -174,23 +170,17 @@ function Companies() {
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || "Unable to update company status");
-        return;
-      }
-
       setMessage(
-        activating
-          ? "Company activated successfully."
-          : "Company deactivated successfully."
+        data?.message ||
+          (activating
+            ? "Company activated successfully."
+            : "Company deactivated successfully.")
       );
 
       await fetchCompanies();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Toggle company status error:", err);
-      setError("Cannot connect to server. Please check backend connection.");
+      setError(err?.message || "Failed to update company status.");
     } finally {
       setSaving(false);
     }
