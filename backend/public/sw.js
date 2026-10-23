@@ -1,4 +1,4 @@
-const CACHE_NAME = "syncora-stock-v2";
+const CACHE_NAME = "syncora-stock-v3";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -38,25 +38,35 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Never intercept API calls in SW (they are handled by our smart offline API with Dexie)
+  // Never intercept API calls
   if (url.pathname.startsWith("/api")) {
     return;
   }
 
-  // Cache-first / Network-fallback for static scripts, styles, and assets
+  // Network-first strategy for HTML navigation (guarantees new releases load immediately)
+  if (event.request.mode === "navigate" || url.pathname === "/" || url.pathname === "/index.html") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cached) => {
+            return cached || caches.match("/index.html") || caches.match("/");
+          });
+        })
+    );
+    return;
+  }
+
+  // Cache-first strategy for static assets (images, fonts, scripts)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) {
-        // Fetch update in background
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse);
-              });
-            }
-          })
-          .catch(() => {});
         return cached;
       }
 
@@ -65,7 +75,7 @@ self.addEventListener("fetch", (event) => {
           if (
             networkResponse &&
             networkResponse.status === 200 &&
-            (event.request.url.startsWith("http") || event.request.url.startsWith("https"))
+            (event.request.url.startsWith("http://") || event.request.url.startsWith("https://"))
           ) {
             const clone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -75,10 +85,7 @@ self.addEventListener("fetch", (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // If offline and requesting navigation, return index.html
-          if (event.request.mode === "navigate") {
-            return caches.match("/index.html") || caches.match("/");
-          }
+          // Silent fallback for non-navigable assets
         });
     })
   );
